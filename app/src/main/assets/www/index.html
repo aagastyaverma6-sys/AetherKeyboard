@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>AetherKey</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  body { margin: 0; padding: 4px; background: #090d16; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #f8fafc; height: 100vh; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
+  .toolbar { display: flex; gap: 4px; overflow-x: auto; padding: 4px 2px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .tool-btn { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1; padding: 4px 8px; border-radius: 8px; font-size: 11px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+  .tool-btn.active { background: rgba(6,182,212,0.3); border-color: #06b6d4; color: #67e8f9; }
+  .keyboard-grid { display: flex; flex-direction: column; gap: 5px; width: 100%; max-width: 600px; margin: 0 auto; }
+  .row { display: flex; justify-content: center; gap: 4px; width: 100%; }
+  .key { flex: 1; height: 42px; background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.16); color: #ffffff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 500; cursor: pointer; backdrop-filter: blur(8px); }
+  .key:active { transform: scale(0.92); background: rgba(6,182,212,0.4); border-color: #38bdf8; }
+  .key.special { background: rgba(255,255,255,0.15); font-size: 12px; font-weight: bold; flex: 1.3; }
+  .key.enter { background: linear-gradient(135deg, #0284c7, #06b6d4); font-weight: bold; flex: 1.5; color: #fff; }
+  .key.space { flex: 4; font-size: 11px; color: #94a3b8; }
+  .palette-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; max-height: 190px; overflow-y: auto; padding: 4px; }
+  .palette-key { height: 38px; font-size: 18px; }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <button class="tool-btn active" id="btnAlpha" onclick="setMode('alpha')">ABC</button>
+  <button class="tool-btn" id="btnMath" onclick="setMode('math')">∫ Calculus</button>
+  <button class="tool-btn" id="btnGreek" onclick="setMode('greek')">α Greek</button>
+  <button class="tool-btn" id="btnDiacritics" onclick="setMode('diacritics')">é Diacritics</button>
+  <select class="tool-btn" id="fontSelector" onchange="setFont(this.value)" style="outline:none;">
+    <option value="normal">Normal Font</option>
+    <option value="bold">𝐁𝐨𝐥𝐝 𝐒𝐞𝐫𝐢𝐟</option>
+    <option value="italic">𝐼𝑡𝑎𝑙𝑖𝑐 𝑆𝑒𝑟𝑖𝑓</option>
+    <option value="script">𝒮𝒸𝓇𝒾𝓅𝓉</option>
+    <option value="fraktur">𝔉𝔯𝔞𝔨𝔱𝔲𝔯</option>
+    <option value="double">𝔻𝕠𝕦𝕓𝕝𝕖</option>
+    <option value="mono">𝚖𝚘𝚗𝚘</option>
+    <option value="bubble">ⓑⓤⓑⓑⓛⓔ</option>
+  </select>
+</div>
+<div class="keyboard-grid" id="keyboardContainer"></div>
+<script>
+  let currentMode = 'alpha', isShift = false, currentFont = 'normal';
+  const MATH_SYMBOLS = ['∫','∬','∭','∮','∂','∇','lim','∑','∏','dx','dy','dt','∆','δ','ε','′','+','−','×','÷','±','∓','√','∛','∝','∞','=','≠','≈','≡','≤','≥','∈','∉','⊂','⊃','∪','∩','∅','ℕ','ℤ','ℚ','ℝ','ℂ','∀','∃','∧','∨','⇒','⇔','∠','⟂','∥','△','⋅','⊗','sin','cos','tan','π','θ','ħ','Ω','μ'];
+  const GREEK_SYMBOLS = ['α','β','γ','δ','ε','ζ','η','θ','ι','κ','λ','μ','ν','ξ','ο','π','ρ','σ','ς','τ','υ','φ','χ','ψ','ω','Α','Β','Γ','Δ','Ε','Ζ','Η','Θ','Ι','Κ','Λ','Μ','Ν','Ξ','Ο','Π','Ρ','Σ','Τ','Υ','Φ','Χ','Ψ','Ω'];
+  const DIACRITICS_SYMBOLS = ['á','à','â','ä','ã','ā','ă','ą','å','é','è','ê','ë','ē','ě','ę','í','ì','î','ï','ī','ó','ò','ô','ö','õ','ō','ő','ø','ú','ù','û','ü','ū','ů','ű','ñ','ç','ć','č','š','ž','ż','ź','đ','ł','ơ','ư'];
+  function transformChar(c, f) {
+    if (f === 'normal') return c;
+    const code = c.charCodeAt(0);
+    if (code >= 65 && code <= 90) {
+      if (f === 'bold') return String.fromCodePoint(0x1D400 + (code - 65));
+      if (f === 'italic') return String.fromCodePoint(0x1D434 + (code - 65));
+      if (f === 'script') return String.fromCodePoint(0x1D49C + (code - 65));
+      if (f === 'fraktur') return String.fromCodePoint(0x1D504 + (code - 65));
+      if (f === 'double') return String.fromCodePoint(0x1D538 + (code - 65));
+      if (f === 'mono') return String.fromCodePoint(0x1D670 + (code - 65));
+      if (f === 'bubble') return String.fromCodePoint(0x24B6 + (code - 65));
+    }
+    if (code >= 97 && code <= 122) {
+      if (f === 'bold') return String.fromCodePoint(0x1D41A + (code - 97));
+      if (f === 'italic') return String.fromCodePoint(0x1D44E + (code - 97));
+      if (f === 'script') return String.fromCodePoint(0x1D4B6 + (code - 97));
+      if (f === 'fraktur') return String.fromCodePoint(0x1D51E + (code - 97));
+      if (f === 'double') return String.fromCodePoint(0x1D552 + (code - 97));
+      if (f === 'mono') return String.fromCodePoint(0x1D68A + (code - 97));
+      if (f === 'bubble') return String.fromCodePoint(0x24D0 + (code - 97));
+    }
+    return c;
+  }
+  function sendChar(c) { if (window.AndroidIME) window.AndroidIME.commitText(transformChar(c, currentFont)); }
+  function sendBksp() { if (window.AndroidIME) window.AndroidIME.sendBackspace(); }
+  function sendEnt() { if (window.AndroidIME) window.AndroidIME.sendEnter(); }
+  function sendSpc() { if (window.AndroidIME) window.AndroidIME.sendSpace(); }
+  function toggleShift() { isShift = !isShift; renderKeyboard(); }
+  function setMode(m) { currentMode = m; document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active')); if (m === 'alpha') document.getElementById('btnAlpha').classList.add('active'); if (m === 'math') document.getElementById('btnMath').classList.add('active'); if (m === 'greek') document.getElementById('btnGreek').classList.add('active'); if (m === 'diacritics') document.getElementById('btnDiacritics').classList.add('active'); renderKeyboard(); }
+  function setFont(f) { currentFont = f; }
+  function renderKeyboard() {
+    const container = document.getElementById('keyboardContainer'); container.innerHTML = '';
+    if (currentMode === 'alpha') {
+      const rows = isShift ? [['Q','W','E','R','T','Y','U','I','O','P'],['A','S','D','F','G','H','J','K','L'],['Z','X','C','V','B','N','M']] : [['q','w','e','r','t','y','u','i','o','p'],['a','s','d','f','g','h','j','k','l'],['z','x','c','v','b','n','m']];
+      rows.forEach((row, idx) => {
+        const rowDiv = document.createElement('div'); rowDiv.className = 'row';
+        if (idx === 2) { const sBtn = document.createElement('button'); sBtn.className = 'key special'; sBtn.innerText = isShift ? '▲' : '⇧'; sBtn.onclick = toggleShift; rowDiv.appendChild(sBtn); }
+        row.forEach(c => { const btn = document.createElement('button'); btn.className = 'key'; btn.innerText = c; btn.onclick = () => { sendChar(c); if (isShift) { isShift = false; renderKeyboard(); } }; rowDiv.appendChild(btn); });
+        if (idx === 2) { const dBtn = document.createElement('button'); dBtn.className = 'key special'; dBtn.innerText = '⌫'; dBtn.onclick = sendBksp; rowDiv.appendChild(dBtn); }
+        container.appendChild(rowDiv);
+      });
+      const botRow = document.createElement('div'); botRow.className = 'row';
+      botRow.innerHTML = '<button class="key special" onclick="setMode(\'math\')">?123</button><button class="key" onclick="sendChar(\',\')">,</button><button class="key space" onclick="sendSpc()">AetherKey</button><button class="key" onclick="sendChar(\'.\')">.</button><button class="key enter" onclick="sendEnt()">↵</button>';
+      container.appendChild(botRow);
+    } else {
+      const list = currentMode === 'math' ? MATH_SYMBOLS : currentMode === 'greek' ? GREEK_SYMBOLS : DIACRITICS_SYMBOLS;
+      const pGrid = document.createElement('div'); pGrid.className = 'palette-grid';
+      list.forEach(s => { const btn = document.createElement('button'); btn.className = 'key palette-key'; btn.innerText = s; btn.onclick = () => sendChar(s); pGrid.appendChild(btn); });
+      container.appendChild(pGrid);
+      const botRow = document.createElement('div'); botRow.className = 'row';
+      botRow.innerHTML = '<button class="key special" onclick="setMode(\'alpha\')">ABC</button><button class="key space" onclick="sendSpc()">Space</button><button class="key special" onclick="sendBksp()">⌫</button><button class="key enter" onclick="sendEnt()">↵</button>';
+      container.appendChild(botRow);
+    }
+  }
+  renderKeyboard();
+</script>
+</body>
+</html>
