@@ -61,7 +61,7 @@ class AetherKeyInputMethodService : InputMethodService() {
             webChromeClient = WebChromeClient()
 
             // Load AetherKey local asset or URL
-            loadUrl("https://ais-dev-iiw7li3pd5yj3gychpuus7-742362268437.asia-southeast1.run.app")
+            loadUrl("file:///android_asset/www/index.html")
         }
 
         rootLayout.addView(keyboardWebView)
