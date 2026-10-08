@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.AetherKey" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#06B6D4</item>
+        <item name="android:statusBarColor">#090D16</item>
+    </style>
+</resources>
